@@ -3,6 +3,7 @@ pragma solidity =0.5.16;
 import './interfaces/IUniswapV2Factory.sol';
 import './UniswapV2Pair.sol';
 
+// 建立 pair 的 factory
 contract UniswapV2Factory is IUniswapV2Factory {
     address public feeTo;
     address public feeToSetter;
@@ -23,14 +24,19 @@ contract UniswapV2Factory is IUniswapV2Factory {
     function createPair(address tokenA, address tokenB) external returns (address pair) {
         require(tokenA != tokenB, 'UniswapV2: IDENTICAL_ADDRESSES');
         (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
+        //'0x0', address(0) is also the address that you send 'burned' tokens to
         require(token0 != address(0), 'UniswapV2: ZERO_ADDRESS');
+        // 確認這pair還沒建立過
         require(getPair[token0][token1] == address(0), 'UniswapV2: PAIR_EXISTS'); // single check is sufficient
         bytes memory bytecode = type(UniswapV2Pair).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(token0, token1));
+        //assembly 直接與 EVM 溝通 and create pair contract
         assembly {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
+        // call initialize function
         IUniswapV2Pair(pair).initialize(token0, token1);
+        // 放入mapping
         getPair[token0][token1] = pair;
         getPair[token1][token0] = pair; // populate mapping in the reverse direction
         allPairs.push(pair);
